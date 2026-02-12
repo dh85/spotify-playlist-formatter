@@ -23,9 +23,6 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps
 
-      - name: Typecheck
-        run: npm run check
-
       - name: Quality (lint + format + svelte-check)
         run: npm run quality
 
