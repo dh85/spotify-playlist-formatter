@@ -24,7 +24,19 @@ function loadDotEnvIntoProcessEnv(filePath: string): void {
 
 loadDotEnvIntoProcessEnv(resolve(process.cwd(), ".env"));
 
+function toWebServerEnv(): Record<string, string> {
+  const entries = Object.entries(process.env).filter((entry): entry is [string, string] => {
+    const [, value] = entry;
+    return typeof value === "string";
+  });
+  return Object.fromEntries(entries);
+}
+
 export default defineConfig({
-  webServer: { command: "npm run build && npm run preview", port: 4173 },
+  webServer: {
+    command: "npm run build && npm run preview",
+    port: 4173,
+    env: toWebServerEnv()
+  },
   testDir: "e2e"
 });

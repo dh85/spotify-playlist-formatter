@@ -1,6 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
 
 const APP_PASSWORD = process.env.APP_PASSWORD ?? "";
+const SESSION_SECRET = process.env.SESSION_SECRET ?? "";
+const HAS_AUTH_TEST_ENV = Boolean(APP_PASSWORD && SESSION_SECRET);
 
 async function gotoRoot(page: Page) {
   await page.goto("http://localhost:4173/");
@@ -37,7 +39,7 @@ test("shows error for invalid password", async ({ page }) => {
 });
 
 test("honors safe next redirect and sanitizes external next on login", async ({ page }) => {
-  test.skip(!APP_PASSWORD, "APP_PASSWORD is required in env for login e2e tests");
+  test.skip(!HAS_AUTH_TEST_ENV, "APP_PASSWORD and SESSION_SECRET are required in env for auth e2e tests");
 
   await page.goto("http://localhost:4173/login?next=%2F%3Ffrom%3Dlogin");
   await page.getByLabel("Password").fill(APP_PASSWORD);
@@ -54,7 +56,7 @@ test("honors safe next redirect and sanitizes external next on login", async ({ 
 });
 
 test("rejects cross-origin POSTs for auth and playlist APIs", async ({ page, request }) => {
-  test.skip(!APP_PASSWORD, "APP_PASSWORD is required in env for login e2e tests");
+  test.skip(!HAS_AUTH_TEST_ENV, "APP_PASSWORD and SESSION_SECRET are required in env for auth e2e tests");
 
   const commonHeaders = { origin: "https://evil.example" };
 
@@ -84,7 +86,7 @@ test("rejects cross-origin POSTs for auth and playlist APIs", async ({ page, req
 });
 
 test("logs in and formats Spotify playlist using API response", async ({ page }) => {
-  test.skip(!APP_PASSWORD, "APP_PASSWORD is required in env for login e2e tests");
+  test.skip(!HAS_AUTH_TEST_ENV, "APP_PASSWORD and SESSION_SECRET are required in env for auth e2e tests");
 
   let playlistCalls = 0;
   await page.route("**/api/playlist", async (route) => {
@@ -118,7 +120,7 @@ test("logs in and formats Spotify playlist using API response", async ({ page })
 });
 
 test.describe("Spotify API error messages", () => {
-  test.skip(!APP_PASSWORD, "APP_PASSWORD is required in env for login e2e tests");
+  test.skip(!HAS_AUTH_TEST_ENV, "APP_PASSWORD and SESSION_SECRET are required in env for auth e2e tests");
 
   const cases: Array<{ status: number; message: string }> = [
     { status: 404, message: "Playlist not found or not publicly accessible." },
@@ -146,7 +148,7 @@ test.describe("Spotify API error messages", () => {
 });
 
 test("resets spotify input, error, and output when switching sources", async ({ page }) => {
-  test.skip(!APP_PASSWORD, "APP_PASSWORD is required in env for login e2e tests");
+  test.skip(!HAS_AUTH_TEST_ENV, "APP_PASSWORD and SESSION_SECRET are required in env for auth e2e tests");
 
   await loginToApp(page);
 
@@ -193,7 +195,7 @@ test("resets spotify input, error, and output when switching sources", async ({ 
 });
 
 test("formats Mixxx CSV without calling playlist API", async ({ page }) => {
-  test.skip(!APP_PASSWORD, "APP_PASSWORD is required in env for login e2e tests");
+  test.skip(!HAS_AUTH_TEST_ENV, "APP_PASSWORD and SESSION_SECRET are required in env for auth e2e tests");
 
   let playlistCalls = 0;
   await page.route("**/api/playlist", async (route) => {
@@ -221,7 +223,7 @@ test("formats Mixxx CSV without calling playlist API", async ({ page }) => {
 });
 
 test("formats Djay Pro CSV without calling playlist API", async ({ page }) => {
-  test.skip(!APP_PASSWORD, "APP_PASSWORD is required in env for login e2e tests");
+  test.skip(!HAS_AUTH_TEST_ENV, "APP_PASSWORD and SESSION_SECRET are required in env for auth e2e tests");
 
   let playlistCalls = 0;
   await page.route("**/api/playlist", async (route) => {
@@ -249,7 +251,7 @@ test("formats Djay Pro CSV without calling playlist API", async ({ page }) => {
 });
 
 test("logout returns user to login and re-protects root", async ({ page }) => {
-  test.skip(!APP_PASSWORD, "APP_PASSWORD is required in env for login e2e tests");
+  test.skip(!HAS_AUTH_TEST_ENV, "APP_PASSWORD and SESSION_SECRET are required in env for auth e2e tests");
 
   await loginToApp(page);
 
