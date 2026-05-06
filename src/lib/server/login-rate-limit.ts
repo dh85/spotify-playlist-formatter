@@ -12,10 +12,14 @@ export const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 export const LOGIN_BLOCK_MS = 15 * 60 * 1000;
 export const LOGIN_RATE_LIMIT_MESSAGE = "Too many login attempts. Please try again later.";
 
-const REDIS_URL = env.RATE_LIMIT_REDIS_URL ?? env.UPSTASH_REDIS_REST_URL;
-const REDIS_TOKEN = env.RATE_LIMIT_REDIS_TOKEN ?? env.UPSTASH_REDIS_REST_TOKEN;
-const REDIS_ENABLED = Boolean(REDIS_URL && REDIS_TOKEN);
 const REDIS_PREFIX = "login_rl";
+
+function getRedisConfig(): { url: string; token: string } | null {
+  const url = env.RATE_LIMIT_REDIS_URL ?? env.UPSTASH_REDIS_REST_URL;
+  const token = env.RATE_LIMIT_REDIS_TOKEN ?? env.UPSTASH_REDIS_REST_TOKEN;
+
+  return url && token ? { url, token } : null;
+}
 
 function getAttemptsKey(key: string): string {
   return `${REDIS_PREFIX}:${key}:attempts`;
@@ -26,14 +30,16 @@ function getBlockedKey(key: string): string {
 }
 
 async function redisCommand(command: string, ...args: string[]): Promise<unknown> {
-  if (!REDIS_URL || !REDIS_TOKEN) {
+  const config = getRedisConfig();
+
+  if (!config) {
     throw new Error("Redis backend is not configured.");
   }
 
   const path = [command, ...args.map((arg) => encodeURIComponent(arg))].join("/");
-  const response = await fetch(`${REDIS_URL}/${path}`, {
+  const response = await fetch(`${config.url.replace(/\/$/, "")}/${path}`, {
     method: "POST",
-    headers: { Authorization: `Bearer ${REDIS_TOKEN}` }
+    headers: { Authorization: `Bearer ${config.token}` }
   });
 
   if (!response.ok) {
@@ -42,6 +48,10 @@ async function redisCommand(command: string, ...args: string[]): Promise<unknown
 
   const payload = (await response.json().catch(() => null)) as null | { result?: unknown };
   return payload?.result;
+}
+
+function shouldUseRedis(): boolean {
+  return getRedisConfig() !== null;
 }
 
 async function isLoginRateLimitedRedis(key: string): Promise<boolean> {
@@ -91,8 +101,12 @@ export function getLoginRateLimitKey(clientAddress: string | undefined): string 
 }
 
 export async function isLoginRateLimited(key: string, now = Date.now()): Promise<boolean> {
-  if (REDIS_ENABLED) {
-    return isLoginRateLimitedRedis(key);
+  if (shouldUseRedis()) {
+    try {
+      return await isLoginRateLimitedRedis(key);
+    } catch (error) {
+      console.error("Login rate limit Redis check failed; falling back to in-memory state.", error);
+    }
   }
 
   const state = attemptsByKey.get(key);
@@ -108,9 +122,13 @@ export async function isLoginRateLimited(key: string, now = Date.now()): Promise
 }
 
 export async function recordFailedLoginAttempt(key: string, now = Date.now()): Promise<void> {
-  if (REDIS_ENABLED) {
-    await recordFailedLoginAttemptRedis(key);
-    return;
+  if (shouldUseRedis()) {
+    try {
+      await recordFailedLoginAttemptRedis(key);
+      return;
+    } catch (error) {
+      console.error("Login rate limit Redis write failed; falling back to in-memory state.", error);
+    }
   }
 
   const state = getOrCreateState(key);
@@ -123,9 +141,13 @@ export async function recordFailedLoginAttempt(key: string, now = Date.now()): P
 }
 
 export async function clearLoginAttempts(key: string): Promise<void> {
-  if (REDIS_ENABLED) {
-    await clearLoginAttemptsRedis(key);
-    return;
+  if (shouldUseRedis()) {
+    try {
+      await clearLoginAttemptsRedis(key);
+      return;
+    } catch (error) {
+      console.error("Login rate limit Redis clear failed; falling back to in-memory state.", error);
+    }
   }
 
   attemptsByKey.delete(key);

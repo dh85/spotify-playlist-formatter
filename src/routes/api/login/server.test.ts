@@ -43,6 +43,11 @@ describe("POST /api/login", () => {
     resetLoginRateLimitForTests();
     env.APP_PASSWORD = "test-secret";
     env.SESSION_SECRET = "test-session-secret";
+    delete env.RATE_LIMIT_REDIS_URL;
+    delete env.RATE_LIMIT_REDIS_TOKEN;
+    delete env.UPSTASH_REDIS_REST_URL;
+    delete env.UPSTASH_REDIS_REST_TOKEN;
+    vi.unstubAllGlobals();
   });
 
   it("returns 401 when request body cannot be parsed", async () => {
@@ -183,6 +188,54 @@ describe("POST /api/login", () => {
       }) as never
     );
     expect(nextFailureResponse.status).toBe(401);
+  });
+
+  it("logs in with in-memory rate limiting when Redis commands fail", async () => {
+    env.RATE_LIMIT_REDIS_URL = "https://redis.example";
+    env.RATE_LIMIT_REDIS_TOKEN = "redis-token";
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("Unauthorized", { status: 401 })));
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const event = createEvent({
+      body: { password: "test-secret", next: "/" },
+      clientAddress: "10.0.0.4"
+    });
+
+    const response = await POST(event as never);
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toStrictEqual({ redirectTo: "/" });
+    expect(event.cookies.set).toHaveBeenCalledOnce();
+    expect(consoleError).toHaveBeenCalled();
+    consoleError.mockRestore();
+  });
+
+  it("records failed login attempts in memory when Redis commands fail", async () => {
+    env.UPSTASH_REDIS_REST_URL = "https://redis.example/";
+    env.UPSTASH_REDIS_REST_TOKEN = "redis-token";
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("Redis is unavailable")));
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    for (let i = 0; i < LOGIN_MAX_FAILED_ATTEMPTS - 1; i += 1) {
+      const response = await POST(
+        createEvent({
+          body: { password: "wrong-pass", next: "/" },
+          clientAddress: "10.0.0.5"
+        }) as never
+      );
+      expect(response.status).toBe(401);
+    }
+
+    const blockedResponse = await POST(
+      createEvent({
+        body: { password: "wrong-pass", next: "/" },
+        clientAddress: "10.0.0.5"
+      }) as never
+    );
+
+    expect(blockedResponse.status).toBe(429);
+    await expect(blockedResponse.text()).resolves.toBe("Too many login attempts. Please try again later.");
+    expect(consoleError).toHaveBeenCalled();
+    consoleError.mockRestore();
   });
 
   it("ignores spoofed x-forwarded-for for rate-limit identity", async () => {
