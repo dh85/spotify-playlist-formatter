@@ -41,9 +41,7 @@
           "editor.formatOnSave": true
         },
         "editor.codeActionsOnSave": {
-          "source.organizeImports": "never",
-          "source.organizeImports.biome": "always",
-          "source.fixAll.biome": "always"
+          "source.organizeImports": "always"
         }
       },
       "extensions": [
@@ -55,6 +53,6 @@
       ]
     }
   },
-  "postCreateCommand": "npm install && npx playwright install --with-deps",
+  "postCreateCommand": "npm ci",
   "remoteUser": "node"
 }

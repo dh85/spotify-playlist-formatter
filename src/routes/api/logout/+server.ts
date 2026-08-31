@@ -1,7 +1,8 @@
 import { SESSION_COOKIE_NAME } from "$lib/server/auth";
 import { CSRF_ERROR_MESSAGE, isSameOriginPostRequest } from "$lib/server/csrf";
+import type { RequestHandler } from "./$types";
 
-export const POST = async ({ request, cookies, url }) => {
+export const POST: RequestHandler = async ({ request, cookies, url }) => {
   if (!isSameOriginPostRequest(request, url)) {
     return new Response(CSRF_ERROR_MESSAGE, { status: 403 });
   }

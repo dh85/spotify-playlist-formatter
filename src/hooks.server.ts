@@ -1,7 +1,7 @@
-import { redirect } from "@sveltejs/kit";
+import { redirect, type Handle } from "@sveltejs/kit";
 import { SESSION_COOKIE_NAME, verifySessionToken } from "$lib/server/auth";
 
-export const handle = async ({ event, resolve }) => {
+export const handle: Handle = async ({ event, resolve }) => {
   const { url, cookies } = event;
 
   const isPublic =
