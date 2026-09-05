@@ -3,8 +3,9 @@ import { CSRF_ERROR_MESSAGE, isSameOriginPostRequest } from "$lib/server/csrf";
 import { parseErrorMessages } from "$lib/spotify/parse-messages";
 import { extractPlaylistId } from "$lib/spotify/parse";
 import { SpotifyApiError, getPublicPlaylist } from "$lib/spotify/client";
+import type { RequestHandler } from "./$types";
 
-export const POST = async ({ request, fetch, url }) => {
+export const POST: RequestHandler = async ({ request, fetch, url }) => {
   if (!isSameOriginPostRequest(request, url)) {
     return json({ error: CSRF_ERROR_MESSAGE }, { status: 403 });
   }

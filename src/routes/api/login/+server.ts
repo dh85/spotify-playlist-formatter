@@ -8,8 +8,9 @@ import {
   LOGIN_RATE_LIMIT_MESSAGE,
   recordFailedLoginAttempt
 } from "$lib/server/login-rate-limit";
+import type { RequestHandler } from "./$types";
 
-export const POST = async ({ request, cookies, url, getClientAddress }) => {
+export const POST: RequestHandler = async ({ request, cookies, url, getClientAddress }) => {
   if (!isSameOriginPostRequest(request, url)) {
     return new Response(CSRF_ERROR_MESSAGE, { status: 403 });
   }

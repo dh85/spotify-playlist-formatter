@@ -1,0 +1,15 @@
+{
+  "$schema":  "https://raw.githubusercontent.com/jetify-com/devbox/0.18.0/.schema/devbox.schema.json",
+  "packages": ["nodejs@24"],
+  "env": {
+    "PLAYWRIGHT_BROWSERS_PATH": "0"
+  },
+  "shell": {
+    "scripts": {
+      "setup": "./scripts/setup.sh",
+      "dev": "npm run dev",
+      "test": "npm test",
+      "e2e": "npx playwright test"
+    }
+  }
+}
